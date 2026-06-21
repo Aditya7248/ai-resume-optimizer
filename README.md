@@ -1,12 +1,14 @@
-# AI Resume Optimizer & Template Generator
+# AI Resume Optimizer
 
-> Intelligent resume tailoring — ATS-optimized, hallucination-free, template-preserved.
+> Intelligent resume tailoring — ATS-optimized, hallucination-free, layout-preserved.
+
+Built by **Dynamics Monk** · Powered by GPT-4o · FastAPI · Next.js
 
 ---
 
 ## Overview
 
-An end-to-end web application that accepts a candidate's resume, a target Job Description, and a DOCX template — then uses GPT-4o to rewrite and optimize the resume for maximum ATS compatibility, while preserving the exact visual design of the uploaded template.
+An end-to-end web application that takes a candidate's resume and a target Job Description, analyzes the skill and keyword gap, and uses GPT-4o to rewrite the resume for maximum ATS compatibility — without changing a single fact. The original PDF/DOCX layout is preserved exactly.
 
 ---
 
@@ -14,12 +16,26 @@ An end-to-end web application that accepts a candidate's resume, a target Job De
 
 | Layer | Technology |
 |---|---|
-| Backend API | FastAPI (Python 3.11) + Uvicorn |
-| AI Engine | OpenAI GPT-4o (structured JSON output) |
-| Document Processing | python-docx, pdfplumber, pypdf |
-| PDF Generation | LibreOffice headless |
+| Backend API | FastAPI (Python 3.14) + Uvicorn |
+| AI Engine | OpenAI GPT-4o + GPT-4o-mini (structured JSON mode) |
+| Document Processing | pdfplumber, PyMuPDF (fitz), python-docx |
+| PDF Generation | PyMuPDF inplace edit · xhtml2pdf · ReportLab (fallback) |
+| Template Rendering | Jinja2 (HTML → PDF via xhtml2pdf) |
 | Frontend | Next.js 14 (App Router) + TypeScript + Tailwind CSS |
 | Containerization | Docker + Docker Compose |
+
+---
+
+## Features
+
+- **Keep My Format** — rewrites only the text; every font, colour, and layout element in your original PDF/DOCX is preserved
+- **Pre-built Templates** — Modern, Classic, and Minimal professional layouts
+- **Upload Your Own Template** — DOCX with `{{PLACEHOLDER}}` tags
+- **6-Signal ATS Scoring** — keyword match, section completeness, format parsability, keyword placement, date consistency, file health
+- **Preflight Flags** — experience gap, domain mismatch, seniority mismatch, missing certifications, location mismatch
+- **Hallucination Guard** — GPT-4o verifies every rewrite; fabricated content is automatically reverted
+- **Optimization Report** — PDF report showing before/after scores, changes made, and known gaps
+- **Semantic Match Score** — AI-judged fit between candidate and JD (0–100%)
 
 ---
 
@@ -32,7 +48,7 @@ An end-to-end web application that accepts a candidate's resume, a target Job De
 ### 1. Clone and configure
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Aditya7248/ai-resume-optimizer.git
 cd ai-resume-optimizer
 cp .env.example .env
 # Edit .env and add your OPENAI_API_KEY
@@ -65,8 +81,8 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Set env variables
-export OPENAI_API_KEY=sk-your-key-here
+# Create .env file
+echo "OPENAI_API_KEY=sk-your-key-here" > .env
 
 # Run
 uvicorn main:app --reload --port 8000
@@ -77,11 +93,8 @@ uvicorn main:app --reload --port 8000
 ```bash
 cd frontend
 npm install
-
-# Set env
-echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
-
 npm run dev
+# Runs on http://localhost:3000
 ```
 
 ---
@@ -91,8 +104,7 @@ npm run dev
 | Variable | Required | Description |
 |---|---|---|
 | `OPENAI_API_KEY` | ✅ | Your OpenAI API key |
-| `ENVIRONMENT` | No | `development` or `production` |
-| `NEXT_PUBLIC_API_URL` | No | Backend URL (default: http://localhost:8000) |
+| `NEXT_PUBLIC_API_URL` | No | Backend URL (default: `http://localhost:8000`) |
 
 ---
 
@@ -102,11 +114,11 @@ Full interactive docs at `/docs` (Swagger UI).
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/upload/` | Upload resume, JD, and template files |
-| POST | `/analyze/` | Run preflight analysis (flags, ATS score, skills) |
-| POST | `/optimize/` | Run AI optimization with user confirmation |
-| GET | `/download/{id}/docx` | Download optimized DOCX |
-| GET | `/download/{id}/pdf` | Download optimized PDF |
+| POST | `/upload/` | Upload resume + JD (+ optional template). Returns `session_id` |
+| POST | `/analyze/` | Run full analysis — ATS score, match %, skill gaps, preflight flags |
+| POST | `/optimize/` | AI rewrite with user-confirmed choices |
+| GET | `/download/{id}/pdf` | Download optimized resume PDF |
+| GET | `/download/{id}/docx` | Download optimized resume DOCX/HTML |
 | GET | `/download/{id}/report` | Download optimization report PDF |
 | GET | `/download/{id}/status` | Check session status |
 | GET | `/health` | Health check |
@@ -116,21 +128,23 @@ Full interactive docs at `/docs` (Swagger UI).
 ## Application Flow
 
 ```
-1. Upload (resume + JD + template)
+1. Upload   →  Resume (PDF/DOCX) + JD (PDF/DOCX/TXT) + Template choice
         ↓
-2. Parse (extract structured data from all files)
+2. Parse    →  Text extraction (pdfplumber / python-docx)
         ↓
-3. Analyze (ATS score, skill gaps, preflight flags)
+3. Enrich   →  GPT-4o-mini structures resume + JD into typed JSON (parallel calls)
         ↓
-4. Review & Confirm (user approves each change)
+4. Analyze  →  ATS score · match % · skill breakdown · preflight flags
         ↓
-5. AI Rewrite (GPT-4o rewrites content per user choices)
+5. Review   →  User confirms: which skills to add, rewrite summary/bullets, template
         ↓
-6. Hallucination Guard (verify nothing was fabricated)
+6. Rewrite  →  GPT-4o rewrites content with JD keywords woven in naturally
         ↓
-7. Template Injection (content → DOCX/PDF)
+7. Guard    →  Hallucination check — fabricated content reverted bullet-by-bullet
         ↓
-8. Download (DOCX + PDF + Report)
+8. Generate →  PDF inplace edit / DOCX edit / Jinja2 → xhtml2pdf
+        ↓
+9. Download →  Optimized Resume (PDF) + Optimization Report (PDF)
 ```
 
 ---
@@ -140,23 +154,24 @@ Full interactive docs at `/docs` (Swagger UI).
 ```
 ai-resume-optimizer/
 ├── backend/
-│   ├── main.py                    # FastAPI app
-│   ├── routers/                   # upload, analyze, optimize, download
+│   ├── main.py                        # FastAPI app, CORS, session cleanup
+│   ├── routers/                       # upload, analyze, optimize, download
 │   ├── services/
-│   │   ├── parser/                # resume_parser.py, jd_parser.py
-│   │   ├── ai/                    # ai_service.py, prompts.py
-│   │   ├── validator/             # preflight.py
-│   │   ├── ats/                   # ats_scorer.py
-│   │   ├── template/              # docx_engine.py, html_engine.py
-│   │   └── report/                # report_gen.py
-│   ├── models/                    # Pydantic schemas
-│   ├── templates/prebuilt/        # modern.html, classic.html, minimal.html
+│   │   ├── ai/                        # ai_service.py, prompts.py
+│   │   ├── ats/                       # ats_scorer.py (6-signal model)
+│   │   ├── parser/                    # resume_parser.py, jd_parser.py
+│   │   ├── template/                  # pdf_inplace_engine.py, docx_engine.py,
+│   │   │                              # html_engine.py, pdf_resume_gen.py
+│   │   ├── report/                    # report_gen.py (ReportLab)
+│   │   └── validator/                 # preflight.py
+│   ├── models/                        # Pydantic schemas (resume, jd, optimization)
+│   ├── templates/prebuilt/            # modern.html, classic.html, minimal.html
 │   └── requirements.txt
 ├── frontend/
 │   └── src/app/
-│       ├── page.tsx               # Upload page
-│       ├── review/page.tsx        # Review & Confirm panel
-│       └── result/page.tsx        # Download + report
+│       ├── page.tsx                   # Upload + template selection
+│       ├── review/page.tsx            # Review & Confirm panel
+│       └── result/page.tsx            # Scores, download buttons
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -165,43 +180,34 @@ ai-resume-optimizer/
 
 ## AI Guardrails
 
-The AI layer enforces strict constraints to prevent fabrication:
+The hallucination guard enforces strict constraints after every rewrite:
 
 | Prohibited | Allowed |
 |---|---|
 | Invent companies or job titles | Rewrite sentence structure |
-| Add certifications not in original | Rearrange sections |
-| Create fake projects | Improve action verbs |
-| Change employment dates | Include JD keywords naturally |
-| Modify education | Expand/condense bullet descriptions |
+| Add certifications not in original | Rearrange section order |
+| Create fake projects or skills | Improve action verbs |
+| Change employment dates | Weave in JD keywords naturally |
+| Modify education or degrees | Expand/condense bullet descriptions |
 
-A **two-step hallucination guard** runs after every rewrite — any invented content is automatically reverted to the original.
+Reverts are applied at **bullet level** — a single bad bullet is reverted without touching the rest of the entry. User-approved skills (`skills_to_add`) are explicitly protected from revert.
 
 ---
 
 ## ATS Scoring Model
 
-Our ATS score is a 6-signal weighted model grounded in research on Workday, Taleo, Greenhouse, and Lever:
+6-signal deterministic model grounded in Workday, Taleo, Greenhouse, and Lever behavior:
 
-| Signal | Max | Basis |
+| Signal | Max | What it measures |
 |---|---|---|
-| Keyword Match | 30 | Hard + soft keyword presence |
-| Section Completeness | 20 | Standard sections present and labeled |
-| Format Parsability | 20 | No tables/text boxes in main content, single column |
-| Keyword Placement | 15 | Keywords in summary/skills carry more weight |
-| Date Consistency | 10 | Consistent format, reverse chronological |
-| File Health | 5 | Text extractable, no garbled encoding |
+| Keyword Match | 30 | Hard & soft JD keywords found in resume (skills, bullets, summary) |
+| Section Completeness | 20 | Name, email, phone, summary, experience+dates, skills, education |
+| Format Parsability | 20 | Text is machine-readable; no image-based PDF; no excessive tables |
+| Keyword Placement | 15 | JD keywords appear early — in summary and first bullets |
+| Date Consistency | 10 | All experience entries have valid start and end dates |
+| File Health | 5 | File size, encoding, no corruption indicators |
 
-> This score reflects general ATS compatibility, not any specific vendor's system.
-
----
-
-## Sample Files
-
-Sample inputs are in `/Required-documents/`:
-- `Sample-Resumes/` — real resume PDFs for testing
-- `JD-samples/` — real JD PDFs for testing
-- `CV-templates/` — DOCX templates for testing
+> Score reflects general ATS compatibility. Not a guarantee for any specific system.
 
 ---
 
