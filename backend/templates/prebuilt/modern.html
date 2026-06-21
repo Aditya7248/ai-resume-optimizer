@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 12mm 14mm; }
+  * { margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 10pt; color: #2d2d2d; background: #fff; }
+
+  /* Header */
+  .header { border-bottom: 2pt solid #1a56db; padding-bottom: 8pt; margin-bottom: 12pt; }
+  .name { font-size: 20pt; font-weight: bold; color: #1a56db; line-height: 1.4; display: block; }
+  .contact-row { margin-top: 8pt; font-size: 8.5pt; color: #555; display: block; }
+  .contact-sep { color: #aaa; padding: 0 4pt; }
+
+  /* Section */
+  .section { margin-bottom: 12pt; }
+  .section-title {
+    font-size: 10pt; font-weight: bold; color: #1a56db;
+    text-transform: uppercase; letter-spacing: 0.5pt;
+    border-bottom: 0.5pt solid #c7d7f9; padding-bottom: 2pt; margin-bottom: 6pt;
+  }
+
+  /* Summary */
+  .summary { font-size: 9.5pt; color: #444; line-height: 1.5; }
+
+  /* Skills */
+  .skills-text { font-size: 9pt; color: #333; line-height: 1.6; }
+
+  /* Experience */
+  .exp-entry { margin-bottom: 10pt; }
+  .exp-title-row { width: 100%; }
+  .exp-title { font-size: 10pt; font-weight: bold; color: #1e293b; }
+  .exp-company { font-size: 9.5pt; color: #1a56db; font-weight: bold; }
+  .exp-dates { font-size: 8.5pt; color: #666; text-align: right; }
+  .exp-location { font-size: 8.5pt; color: #888; margin-bottom: 3pt; }
+  .bullet-item { font-size: 9pt; color: #444; margin-bottom: 2pt; padding-left: 10pt; }
+
+  /* Education */
+  .edu-entry { margin-bottom: 7pt; }
+  .edu-degree { font-weight: bold; font-size: 9.5pt; }
+  .edu-inst { color: #1a56db; font-size: 9pt; }
+  .edu-year { font-size: 8.5pt; color: #777; }
+
+  /* Projects */
+  .proj-entry { margin-bottom: 8pt; }
+  .proj-name { font-weight: bold; font-size: 9.5pt; }
+  .proj-tech { font-size: 8.5pt; color: #1a56db; }
+  .proj-desc { font-size: 9pt; color: #444; margin-top: 2pt; }
+
+  /* Certs */
+  .cert-entry { font-size: 9pt; color: #444; margin-bottom: 3pt; }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="name">{{ full_name }}</div>
+    <div class="contact-row">
+      {% set parts = [] %}
+      {% if email %}{% set _ = parts.append(email) %}{% endif %}
+      {% if phone %}{% set _ = parts.append(phone) %}{% endif %}
+      {% if location %}{% set _ = parts.append(location) %}{% endif %}
+      {% if linkedin %}{% set _ = parts.append(linkedin) %}{% endif %}
+      {% if github %}{% set _ = parts.append(github) %}{% endif %}
+      {{ parts | join(' | ') }}
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  {% if summary %}
+  <div class="section">
+    <div class="section-title">Professional Summary</div>
+    <div class="summary">{{ summary }}</div>
+  </div>
+  {% endif %}
+
+  <!-- SKILLS -->
+  {% if skills %}
+  <div class="section">
+    <div class="section-title">Core Skills</div>
+    <div class="skills-text">{{ skills | join(' · ') }}</div>
+  </div>
+  {% endif %}
+
+  <!-- EXPERIENCE -->
+  {% if experience %}
+  <div class="section">
+    <div class="section-title">Professional Experience</div>
+    {% for exp in experience %}
+    <div class="exp-entry">
+      <table class="exp-title-row" style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td style="width:75%;">
+            <span class="exp-title">{{ exp.title }}</span>
+            &nbsp;&mdash;&nbsp;
+            <span class="exp-company">{{ exp.company }}</span>
+          </td>
+          <td style="width:25%; text-align:right; vertical-align:top;">
+            <span class="exp-dates">{{ exp.start_date }}{% if exp.end_date %} &ndash; {{ exp.end_date }}{% endif %}</span>
+          </td>
+        </tr>
+      </table>
+      {% if exp.location %}<div class="exp-location">{{ exp.location }}</div>{% endif %}
+      {% if exp.bullets %}
+        {% for bullet in exp.bullets %}
+        <div class="bullet-item">&#8226; {{ bullet }}</div>
+        {% endfor %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- PROJECTS -->
+  {% if projects %}
+  <div class="section">
+    <div class="section-title">Projects</div>
+    {% for proj in projects %}
+    <div class="proj-entry">
+      <span class="proj-name">{{ proj.name }}</span>
+      {% if proj.technologies %}<span class="proj-tech"> &nbsp;&middot;&nbsp; {{ proj.technologies | join(', ') }}</span>{% endif %}
+      {% if proj.description %}<div class="proj-desc">{{ proj.description }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- EDUCATION -->
+  {% if education %}
+  <div class="section">
+    <div class="section-title">Education</div>
+    {% for edu in education %}
+    <div class="edu-entry">
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td><span class="edu-degree">{{ edu.degree }}</span> &mdash; <span class="edu-inst">{{ edu.institution }}</span>{% if edu.location %}, {{ edu.location }}{% endif %}</td>
+          <td style="text-align:right; white-space:nowrap;"><span class="edu-year">{% if edu.year %}{{ edu.year }}{% endif %}</span></td>
+        </tr>
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- CERTIFICATIONS -->
+  {% if certifications %}
+  <div class="section">
+    <div class="section-title">Certifications</div>
+    {% for cert in certifications %}
+    <div class="cert-entry">{{ cert.name }}{% if cert.issuer %} &mdash; {{ cert.issuer }}{% endif %}{% if cert.year %} ({{ cert.year }}){% endif %}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</body>
+</html>

@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-orange: #f05a1a;
+  --brand-navy:   #162349;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn-primary {
+  @apply bg-brand-500 text-white font-semibold px-6 py-2.5 rounded-lg
+         hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed
+         transition-colors shadow-sm;
+}
+
+.btn-secondary {
+  @apply bg-white text-navy-800 font-semibold px-6 py-2.5 rounded-lg
+         border border-slate-200 hover:bg-slate-50
+         disabled:opacity-50 transition-colors;
+}
+
+/* ── Cards ─────────────────────────────────────────────────── */
+.card {
+  @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+}
+
+/* ── Section titles ─────────────────────────────────────────── */
+.section-title {
+  @apply text-base font-bold text-navy-800 mb-3;
+}
+
+/* ── Nav active underline (orange) ──────────────────────────── */
+.nav-active {
+  @apply text-brand-500 font-semibold relative;
+}
+.nav-active::after {
+  content: '';
+  @apply absolute bottom-0 left-0 right-0 h-0.5 bg-brand-500 rounded-full;
+}
