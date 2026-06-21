@@ -142,10 +142,14 @@ const PREBUILT_TEMPLATES = [
 
 type TemplateMode = 'keep' | 'upload' | 'prebuilt'
 
+type JDMode = 'file' | 'text'
+
 export default function HomePage() {
   const router = useRouter()
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [jdFile, setJdFile] = useState<File | null>(null)
+  const [jdMode, setJdMode] = useState<JDMode>('file')
+  const [jdText, setJdText] = useState('')
   const [templateFile, setTemplateFile] = useState<File | null>(null)
   const [templateChoice, setTemplateChoice] = useState<string | null>(null)
   const [templateMode, setTemplateMode] = useState<TemplateMode>('keep')
@@ -154,9 +158,26 @@ export default function HomePage() {
   const [step, setStep] = useState<'upload' | 'analyzing'>('upload')
   const [previewTemplate, setPreviewTemplate] = useState<typeof PREBUILT_TEMPLATES[0] | null>(null)
 
+  // When switching JD mode, clear the other input
+  function switchJdMode(mode: JDMode) {
+    setJdMode(mode)
+    if (mode === 'file') setJdText('')
+    else setJdFile(null)
+  }
+
+  // Resolve the effective JD file — either the uploaded file or a File built from pasted text
+  function resolvedJdFile(): File | null {
+    if (jdMode === 'file') return jdFile
+    const trimmed = jdText.trim()
+    if (!trimmed) return null
+    return new File([trimmed], 'job_description.txt', { type: 'text/plain' })
+  }
+
+  const jdReady = jdMode === 'file' ? !!jdFile : jdText.trim().length >= 50
+
   const canProceed =
     resumeFile &&
-    jdFile &&
+    jdReady &&
     (templateMode === 'keep' ||
      (templateMode === 'upload' && !!templateFile) ||
      (templateMode === 'prebuilt' && !!templateChoice))
@@ -168,9 +189,10 @@ export default function HomePage() {
     setStep('analyzing')
 
     try {
+      const effectiveJd = resolvedJdFile()!
       const { session_id } = await uploadFiles(
         resumeFile!,
-        jdFile!,
+        effectiveJd,
         templateMode === 'upload' ? templateFile : null,
         templateMode === 'prebuilt' ? templateChoice : null,
       )
@@ -237,19 +259,83 @@ export default function HomePage() {
           }}
         />
 
-        {/* JD Upload */}
-        <FileUploadCard
-          label="Job Description"
-          sublabel="PDF, DOCX, or .txt"
-          icon={<Briefcase className="w-5 h-5 text-brand-500" />}
-          file={jdFile}
-          onFile={setJdFile}
-          accept={{
-            'application/pdf': ['.pdf'],
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-            'text/plain': ['.txt'],
-          }}
-        />
+        {/* JD — File upload OR paste text */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-brand-500" />
+              <span className="font-semibold text-slate-800">Job Description</span>
+            </div>
+            {/* Mode toggle */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+              <button
+                onClick={() => switchJdMode('file')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  jdMode === 'file' ? 'bg-white text-brand-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Upload File
+              </button>
+              <button
+                onClick={() => switchJdMode('text')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  jdMode === 'text' ? 'bg-white text-brand-500 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Paste Text
+              </button>
+            </div>
+          </div>
+
+          {jdMode === 'file' ? (
+            <FileUploadCard
+              label=""
+              sublabel="PDF, DOCX, or .txt"
+              icon={<Briefcase className="w-5 h-5 text-brand-500" />}
+              file={jdFile}
+              onFile={setJdFile}
+              accept={{
+                'application/pdf': ['.pdf'],
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+                'text/plain': ['.txt'],
+              }}
+              compact
+            />
+          ) : (
+            <div>
+              <textarea
+                value={jdText}
+                onChange={e => setJdText(e.target.value)}
+                placeholder="Paste the full job description here…"
+                rows={8}
+                className={`w-full border-2 rounded-lg px-4 py-3 text-sm text-slate-700 placeholder-slate-400 resize-y focus:outline-none focus:border-brand-400 transition-colors ${
+                  jdText.trim().length > 0 && jdText.trim().length < 50
+                    ? 'border-yellow-300 bg-yellow-50'
+                    : jdText.trim().length >= 50
+                    ? 'border-green-400 bg-green-50'
+                    : 'border-slate-200 bg-white'
+                }`}
+              />
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-xs text-slate-400">
+                  {jdText.trim().length < 50 && jdText.trim().length > 0
+                    ? `Too short — paste the full JD (${jdText.trim().length}/50 chars min)`
+                    : jdText.trim().length >= 50
+                    ? `✓ ${jdText.trim().length} characters`
+                    : 'Minimum 50 characters'}
+                </span>
+                {jdText.trim().length > 0 && (
+                  <button
+                    onClick={() => setJdText('')}
+                    className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Template Section */}
         <div className="card p-5">
